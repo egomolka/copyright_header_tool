@@ -24,6 +24,8 @@
 $options = {} # This hash will hold all of the options parsed from the command-line by OptionParser.
 $unknown_files = [] # List of files of unknown type
 $existing_copyright = []# List of files with existing Copyright
+$COPYRIGHT_HEADER_START = "COPYRIGHT HEADER START"
+$COPYRIGHT_HEADER_END = "COPYRIGHT HEADER END"
 
 class CopyrightHeaderTool
 
@@ -31,12 +33,12 @@ class CopyrightHeaderTool
 	def recursive_insert(dir)
 		require 'find'
 		Find.find(dir + '/') do |f|
-			f.sub!(Dir.pwd + '/', '') # remove working dir path for readable output (= use relative paths)
 			type = case
 					when File.file?(f) then "  F"
 					when File.directory?(f) then "D"
 					else "?"
 				end
+				f.sub!(Dir.pwd + '/', '') # remove working dir path for readable output (= use relative paths)
 				Find.prune if File.basename(f)[0] == ?. # Ignore hidden files and folders
 				Find.prune if f + '/' == "#{$options[:outputdir]}" # Ignore output dir, omit recursion
 			puts "#{type}: #{f}"
@@ -121,24 +123,23 @@ class CopyrightHeaderTool
 	# get hash with comment syntax with specified syntax
 	def comment_syntax(comm_start = '#', comm_line = '#', comm_end = '')
 		c_syntax = Hash.new
-		c_syntax[:start] = comm_start + "| # COPYRIGHT HEADER START #"
+		c_syntax[:start] = comm_start + "| # #{$COPYRIGHT_HEADER_START} #"
 		c_syntax[:line] = comm_line + "|  "
-		c_syntax[:end] = comm_line + "| # COPYRIGHT HEADER END #" + comm_end
+		c_syntax[:end] = comm_line + "| # #{$COPYRIGHT_HEADER_START} #" + comm_end
 		c_syntax
 	end
 	
 	# Check file for existing Copyright
 	def copyright_check(file, n = 10)
 		f = File.new(file, 'r')
-		copyrighted = false
+		has_copyright = false
 		fsize = File.readlines(file).size
 		n = fsize if (fsize < n)
 		n.times do
-			copyrighted ||= (/[Cc]opyright/ =~ f.readline)
+			has_copyright ||= (/[Cc]opyright/ =~ f.readline)
 		end
-		copyrighted
+		has_copyright
 	end
-	
 end
 
 options = {}
