@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Version: 0.1
 
  require 'optparse' # OptionParser (Ruby built-in)
  require 'fileutils' # FileUtils (gem install fileutils)
@@ -57,7 +58,7 @@ class CopyrightHeaderTool
 			file_content = f.read
 			header = copyright_header(type)
 			file_content = header + file_content
-			if $options[:dry]
+			if $options[:noop]
 				puts file_content
 			else
 				dir = "#{$options[:outputdir]}/#{File.dirname(f.path)}"
@@ -118,15 +119,12 @@ class CopyrightHeaderTool
 		c_syntax
 	end
 end
-	
-
-
 
 options = {}
 optparse = OptionParser.new do |opts|
 	# Set a banner, displayed at the top
 	# of the help screen.
-	opts.banner = "Usage: CopyrightHeaderTool.rb [options] [file1] ..."
+	opts.banner = "Usage: CopyrightHeaderTool.rb [options] [file]"
 	
 	# Define the options, and what they do
 	options[:verbose] = false
@@ -134,13 +132,13 @@ optparse = OptionParser.new do |opts|
 		options[:verbose] = true
 	end
 	
-	options[:dry] = false
+	options[:noop] = false
 	opts.on( '-n', '--noop', 'Output the parsed files to STDOUT, do not change the files' ) do
-		options[:dry] = true
+		options[:noop] = true
 	end
 	
 	options[:outputdir] = 'copyrighted/'
-	opts.on( '-o', '--outputdir DIR', 'Use DIR as output directory"' ) do|dir|
+	opts.on( '-o', '--outputdir DIR', 'Use DIR as output directory, default is "copyrighted/"' ) do|dir|
 		options[:outputdir] = dir + '/'
 	end
 	
