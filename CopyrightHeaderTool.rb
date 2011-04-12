@@ -23,20 +23,22 @@
 
 $options = {} # This hash will hold all of the options parsed from the command-line by OptionParser.
 $unknown_files = [] # List of files of unknown type
+$existing_copyright = []# List of files with existing Copyright
 
 class CopyrightHeaderTool
 
 	# insert copyright header in all files of a directory
 	def recursive_insert(dir)
 		require 'find'
-		Find.find(dir + '/') do |f|  
-			type = case  
+		Find.find(dir + '/') do |f|
+			f.sub!(Dir.pwd + '/', '') # remove working dir path for readable output (= use relative paths)
+			type = case
 					when File.file?(f) then "  F"
 					when File.directory?(f) then "D"
 					else "?"
 				end
-				Find.prune if f + '/' == "./#{$options[:outputdir]}" # omit recursion
-				
+				Find.prune if File.basename(f)[0] == ?. # Ignore hidden files and folders
+				Find.prune if f + '/' == "#{$options[:outputdir]}" # Ignore output dir, omit recursion
 			puts "#{type}: #{f}"
 			insert_license(f) if File.file?(f)
 		end
@@ -57,7 +59,13 @@ class CopyrightHeaderTool
 			f = File.new(file, 'r')
 			file_content = f.read
 			header = copyright_header(type)
+			
+			if copyright_check(file)
+				
+				$existing_copyright << file
+			end
 			file_content = header + file_content
+			
 			if $options[:noop]
 				puts file_content
 			else
@@ -118,6 +126,19 @@ class CopyrightHeaderTool
 		c_syntax[:end] = comm_line + "| # COPYRIGHT HEADER END #" + comm_end
 		c_syntax
 	end
+	
+	# Check file for existing Copyright
+	def copyright_check(file, n = 10)
+		f = File.new(file, 'r')
+		copyrighted = false
+		fsize = File.readlines(file).size
+		n = fsize if (fsize < n)
+		n.times do
+			copyrighted ||= (/[Cc]opyright/ =~ f.readline)
+		end
+		copyrighted
+	end
+	
 end
 
 options = {}
@@ -158,12 +179,24 @@ end
 optparse.parse!
 $options = options # make options global
 
-if (!ARGV.empty?)
-	CopyrightHeaderTool.new.insert_license("./#{ARGV[0]}")
-else
-	CopyrightHeaderTool.new.recursive_insert('.')
-	puts "Ignored files (unknown filetype):"
-	$unknown_files.each do |f|
-	puts "  " + f
+def write_existing_copyright
+	puts "\nWARNING: Existing Copyright found in following files:"
+	$existing_copyright.each do |f|
+		puts "  " + f
 	end
 end
+
+def write_ignored_files
+	puts "\nIgnored files (unknown filetype):"
+	$unknown_files.each do |f|
+		puts "  " + f
+	end
+end
+
+if (!ARGV.empty?)
+	CopyrightHeaderTool.new.insert_license("#{ARGV[0]}")
+else
+	CopyrightHeaderTool.new.recursive_insert(Dir.pwd)
+end
+write_ignored_files if !($unknown_files.empty?)
+write_existing_copyright() if !($existing_copyright.empty?)
