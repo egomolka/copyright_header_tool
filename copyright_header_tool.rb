@@ -28,6 +28,9 @@ $unknown_files = [] # List of files of unknown type
 $existing_copyright = []# List of files with existing Copyright
 $COPYRIGHT_HEADER_START = "COPYRIGHT HEADER START" # Identifier at the start of inserted header
 $COPYRIGHT_HEADER_END = "COPYRIGHT HEADER END" # Identifier at the end of inserted header
+$head_patterns = {}
+$head_patterns[:general] = ['#!']
+$head_patterns[:html] = ['<html', '<!DOCTYPE']
 
 class CopyrightHeaderTool
 
@@ -66,11 +69,13 @@ class CopyrightHeaderTool
   def insert_header(file)
     type = filetype(file)
     if type != 'unknown'
-      f = File.new(file, 'r')
-      file_content = f.read
-      header = copyright_header(type)
+      header = copyright_header(type) # generate commented copyright header
       $existing_copyright << file if copyright_check(file) # add file to list if existing copyright found
-      file_content = header + file_content
+      f = File.new(file, 'r')
+      file_content = ''
+      find_file_head(file).times {file_content << f.readline } # insert file head
+      file_content << header # insert copyright header
+      file_content << f.readline until f.eof? # insert rest of file
       if $options[:noop]
         puts file_content
       else
@@ -142,8 +147,9 @@ class CopyrightHeaderTool
     fsize = File.readlines(file).size
     lines = fsize if (fsize < lines)
     lines.times do
-      has_copyright ||= (/[Cc]opyright/ =~ f.readline)
-      has_copyright ||= (/[Ll]icense/ =~ f.readline)
+      line = f.readline
+      has_copyright ||= (/[Cc]opyright/ =~ line)
+      has_copyright ||= (/[Ll]icense/ =~ line)
     end
     has_copyright
   end
@@ -164,6 +170,33 @@ class CopyrightHeaderTool
     end
     header
   end
+  
+  # get list of patterns, that have to be located before Inserting a comment
+  def head_patterns_type(type)
+    patterns = $head_patterns[:general]
+    patterns.concat($head_patterns[:"#{type}"]) if $head_patterns[:"#{type}"]
+    patterns
+  end
+
+  # find last line belonging to the file head -> Comments are inserted after that line
+  def find_file_head(file, lines = 10)
+    head_end = 0
+    type = filetype(file)
+    head_patts = head_patterns_type(type)
+    fsize = File.readlines(file).size
+    f = File.new(file, 'r')
+    lines = fsize if (fsize < lines) # prevent from searching beyond EOF
+    lines.times do
+      line = f.readline
+      head_patts.each do |pattern| # for each pattern
+        if (line =~ /#{pattern}/i) # case insensitive matching
+          head_end = f.lineno # when pattern found, active line belongs to file head
+          break
+        end
+      end
+    end
+    head_end
+  end
 
   def clean_header(file)
     header = find_copyright_header(file)
@@ -171,9 +204,7 @@ class CopyrightHeaderTool
     if header.any? # only when header found
       f = File.new(file, 'r')
       file_content = ""
-      (header[:start]-1).times do
-        file_content << f.readline # read lines before header
-      end
+      (header[:start]-1).times {file_content << f.readline } # read lines before header
       f.readline while (f.lineno < header[:end]) # jump over every line till header_end
       line = f.readline
       file_content << line unless line.sub(syntax[:comm_end], '').strip.empty? # add first line after header if not empty (after removing comment end syntax)
@@ -244,7 +275,7 @@ class OptionParser
       opts.on( '-c', '--clean-header FILE', 'Clean Header in FILE' ) do|file|
         options[:clean] = file
       end
-      opts.on( '-A', '--all', 'Insert Header in all Files in current folder and subdirectories' ) do
+      opts.on( '-a', '--all', 'Insert Header in all Files in current folder and subdirectories' ) do
         options[:all] = true
       end
       opts.on( '-C', '--clean-all', 'Clean Header in all Files in current folder and subdirectories' ) do
