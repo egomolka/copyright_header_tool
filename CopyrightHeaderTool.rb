@@ -39,24 +39,22 @@ class CopyrightHeaderTool
       Find.prune if File.basename(f)[0] == ?. # Ignore hidden files and folders
       Find.prune if File.basename(f) == File.basename(__FILE__) # Exclude the Tool itself
       Find.prune if (f + '/' == "#{$options[:outputdir]}") # Ignore output dir when inserting, omit recursion
-      if File.file?(f)
-        insert_header(f) # Insert header
-      end
+      insert_header(f) if File.file?(f) # Insert header
     end
   end
+
+  # clean copyright header in all files of a directory
   def clean_all(dir)
     require 'find'
     Find.find(dir + '/') do |f|
       f.sub!(Dir.pwd + '/', '') # remove working dir path for readable output (= use relative paths)
       Find.prune if File.basename(f)[0] == ?. # Ignore hidden files and folders
       Find.prune if File.basename(f) == File.basename(__FILE__) # Exclude the Tool itself
-      if File.file?(f)
-        clean_header(f) # Clean header
-      end
+      clean_header(f) if File.file?(f) # Clean header
     end
   end
-  
-  # Generate commented copyright header
+
+  # Generate commented copyright header (string)
   def copyright_header(type)
     syntax = comment_syntax_type(type)
     comment = "#{syntax[:start]} \n"
@@ -66,68 +64,65 @@ class CopyrightHeaderTool
 
   # Insert license in file
   def insert_header(file)
-    type = filetype(File.extname(file))
+    type = filetype(file)
     if type != 'unknown'
       f = File.new(file, 'r')
       file_content = f.read
       header = copyright_header(type)
-      
-      if copyright_check(file)
-        
-        $existing_copyright << file
-      end
+      $existing_copyright << file if copyright_check(file) # add file to list if existing copyright found
       file_content = header + file_content
-      
       if $options[:noop]
         puts file_content
       else
         dir = "#{$options[:outputdir]}/#{File.dirname(f.path)}"
-        FileUtils.mkpath dir if !File.directory?(dir)
+        FileUtils.mkpath dir unless File.directory?(dir)
         outputpath = "./" + $options[:outputdir] + file
         File.new(outputpath, 'w').write(file_content)
         $inserted_copyright << file
       end
     else
-      $unknown_files << file
+      $unknown_files << file # add file to list of files with unknown type
     end
   end
 
-  # get filetype from extension
-  def filetype(ext) 
-    if (['.html', '.htm', '.xhtml'].include? ext)
-      type = 'html'
-    elsif (['.rb'].include? ext)
-      type = 'ruby'
-    elsif ('.erb' == ext)
-      type = 'erb'
-    elsif ('.js' == ext)
-      type = 'javascript'
-    elsif ('.css' == ext)
-      type = 'css'
-    elsif ('.yml' == ext)
-      type = 'yaml'
-    else
-      type = 'unknown'
+  # get filetype from file
+  def filetype(file) 
+    ext = File.extname(file)
+    type = case
+       when (['.html', '.htm', '.xhtml'].include? ext)
+        then 'html'
+      when (['.rb'].include? ext)
+        then 'ruby'
+      when ('.erb' == ext)
+        then 'erb'
+      when ('.js' == ext)
+        then 'javascript'
+      when ('.css' == ext)
+        then 'css'
+      when ('.yml' == ext)
+        then 'yaml'
+      else
+        'unknown'
     end
   end
 
   # get hash with comment syntax by filetype
   def comment_syntax_type(type)
-    case type
+    syntax = case type
       when 'html'
-        syntax = comment_syntax('<!-- ', '', ' -->')
+        comment_syntax('<!-- ', '', ' -->')
       when 'ruby'
-        syntax = comment_syntax('# ', '# ', '')
+        comment_syntax('# ', '# ', '')
       when 'erb'
-        syntax = comment_syntax('<% # ', '# ', ' %>')
+        comment_syntax('<% # ', '# ', ' %>')
       when 'css'
-        syntax = comment_syntax('/* ', ' * ', ' */ ')
+        comment_syntax('/* ', ' * ', ' */ ')
       when 'javascript'
-        syntax = comment_syntax('// ', '// ', '')
+        comment_syntax('// ', '// ', '')
       when 'yaml'
-        syntax = comment_syntax('# ', '# ', '')
+        comment_syntax('# ', '# ', '')
       else
-        syntax = comment_syntax()
+        comment_syntax()
     end
   end
 
@@ -135,32 +130,34 @@ class CopyrightHeaderTool
   def comment_syntax(comm_start = '#', comm_line = '#', comm_end = '')
     { :start => comm_start + " | # #{$COPYRIGHT_HEADER_START} #",
       :line => comm_line + "|  ",
-      :end => comm_line + "| # #{$COPYRIGHT_HEADER_END} #" + comm_end,
+      :end => comm_line + "| # #{$COPYRIGHT_HEADER_END} # \n" + comm_end, # comm_end on new line, otherwise it's commented out by comm_line
+      :comm_end => comm_end # Needed when cleaning
     }
   end
 
-  # Check file for existing Copyright
-  def copyright_check(file, n = 10)
+  # Check file for existing copyright / license in first lines
+  def copyright_check(file, lines = 10)
     f = File.new(file, 'r')
     has_copyright = false
     fsize = File.readlines(file).size
-    n = fsize if (fsize < n)
-    n.times do
+    lines = fsize if (fsize < lines)
+    lines.times do
       has_copyright ||= (/[Cc]opyright/ =~ f.readline)
+      has_copyright ||= (/[Ll]icense/ =~ f.readline)
     end
     has_copyright
   end
 
   # get position of header[:start], header[:end]
-  def find_copyright_header(file, n = 10)
+  def find_copyright_header(file, lines = 10)
     header = {}
     fsize = File.readlines(file).size
     f = File.new(file, 'r')
-    n = fsize if (fsize < n) # prevent from searching beyond EOF
-    n.times do
+    lines = fsize if (fsize < lines) # prevent from searching beyond EOF
+    lines.times do
       if (f.readline.include? $COPYRIGHT_HEADER_START)
         header[:start]=f.lineno  #Line Number of Header Start
-        while !(f.readline.include? $COPYRIGHT_HEADER_END) : next end
+        next until (f.readline.include? $COPYRIGHT_HEADER_END)
         header[:end]=f.lineno
         break # Stop loop when header found
       end
@@ -170,7 +167,8 @@ class CopyrightHeaderTool
 
   def clean_header(file)
     header = find_copyright_header(file)
-    if !header.empty? # only when header found
+    syntax = comment_syntax_type(filetype(file))
+    if header.any? # only when header found
       f = File.new(file, 'r')
       file_content = ""
       (header[:start]-1).times do
@@ -178,8 +176,10 @@ class CopyrightHeaderTool
       end
       f.readline while (f.lineno < header[:end]) # jump over every line till header_end
       line = f.readline
-      file_content << line if !line.chomp.empty? # add first line after header if not empty
-      file_content << f.readline while !f.eof? # read lines after header
+      file_content << line unless line.sub(syntax[:comm_end], '').strip.empty? # add first line after header if not empty (after removing comment end syntax)
+      line = f.readline
+      file_content << line unless line.strip.empty? # add second line after header end if not empty
+      file_content << f.readline until f.eof? # read lines after header
       # puts file_content
       File.new(file, 'w').write(file_content)
       $cleaned_copyright << file
@@ -281,7 +281,7 @@ CHT.insert_all(Dir.pwd) if $options[:all]
 # Clean Copyright in all files
 CHT.clean_all(Dir.pwd) if $options[:clean_all]
 
-write_inserted if !($inserted_copyright.empty?)
-write_ignored_files if !($unknown_files.empty?)
-write_existing_copyright() if !($existing_copyright.empty?)
-write_cleaned if !($cleaned_copyright.empty?)
+write_inserted if $inserted_copyright.any?
+write_ignored_files if $unknown_files.any?
+write_existing_copyright if $existing_copyright.any?
+write_cleaned if $cleaned_copyright.any?
