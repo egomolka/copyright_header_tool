@@ -16,23 +16,46 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Version: 0.3
+# Version: 0.5
+
+
+class CopyrightHeaderTool
 
  require 'optparse' # OptionParser (Ruby built-in)
  require 'fileutils' # FileUtils (gem install fileutils)
-
-$options = {} # This hash will hold all of the options parsed from the command-line by OptionParser.
-$inserted_copyright = [] # List of all files where header inserted
-$cleaned_copyright = [] # List of all files where header cleaned
-$unknown_files = [] # List of files of unknown type
-$existing_copyright = []# List of files with existing Copyright
-$COPYRIGHT_HEADER_START = "COPYRIGHT HEADER START" # Identifier at the start of inserted header
-$COPYRIGHT_HEADER_END = "COPYRIGHT HEADER END" # Identifier at the end of inserted header
-$head_patterns = {} # when head patterns are found in the first lines, the copyright header is inserted after it 
-$head_patterns[:general] = ['#!'] # general file head identifiers, used for all filetypes
-$head_patterns[:html] = ['<!DOCTYPE', '<html', ] # filetype specific file head identifiers
-
-class CopyrightHeaderTool
+ 
+  attr_accessor :options, :inserted_copyright, :cleaned_copyright, :unknown_files, :existing_copyright
+  
+  @@COPYRIGHT_HEADER_START = "COPYRIGHT HEADER START" # Identifier at the start of inserted header
+  @@COPYRIGHT_HEADER_END = "COPYRIGHT HEADER END" # Identifier at the end of inserted header
+  @@head_patterns = { # when head patterns are found in the first lines, the copyright header is inserted after it 
+    :general => ['#!'], # general file head identifiers, used for all filetypes
+    :html => ['<!DOCTYPE', '<html', ] # filetype specific file head identifiers
+  }
+  @@extension_types = { # Hash of filetypes with corresponding extensions
+    :ruby => ['.rb'],
+    :html => ['.html', '.htm', '.xhtml'],
+    :erb => ['.erb'],
+    :javacript => ['.js'],
+    :css => ['.css'],
+    :yaml => ['.yml'],
+  }
+  @@syntax_types = { # Hash of filetypes and their comment syntax
+    :ruby => ['# ', '# ', ''],
+    :html => ['<!-- ', '', ' -->'],
+    :erb => ['<% # ', '# ', ' %>'],
+    :javacript => ['// ', '// ', ''],
+    :css => ['/* ', ' * ', ' */ '],
+    :yaml => ['# ', '# ', ''],
+    :unknown => []
+  }
+  def initialize
+    @options = {} # This hash will hold all of the options parsed from the command-line by OptionParser.
+    @inserted_copyright = [] # List of all files where header inserted
+    @cleaned_copyright = [] # List of all files where header cleaned
+    @unknown_files = [] # List of files of unknown type
+    @existing_copyright = []# List of files with existing Copyright
+  end
 
   # insert copyright header in all files of a directory
   def insert_all(dir)
@@ -41,7 +64,7 @@ class CopyrightHeaderTool
       f.sub!(Dir.pwd + '/', '') # remove working dir path for readable output (= use relative paths)
       Find.prune if File.basename(f)[0] == ?. # Ignore hidden files and folders
       Find.prune if File.basename(f) == File.basename(__FILE__) # Exclude the Tool itself
-      Find.prune if (f + '/' == "#{$options[:outputdir]}") # Ignore output dir when inserting, omit recursion
+      Find.prune if (f + '/' == "#{@options[:outputdir]}") # Ignore output dir when inserting, omit recursion
       insert_header(f) if File.file?(f) # Insert header
     end
   end
@@ -61,69 +84,51 @@ class CopyrightHeaderTool
   def copyright_header(type)
     syntax = comment_syntax_type(type)
     comment = "#{syntax[:start]} \n"
-    File.open($options[:license], 'r').each {|l| comment << "#{syntax[:line]} #{l}"}
+    File.open(@options[:license], 'r').each {|l| comment << "#{syntax[:line]} #{l}"} # Add each line commented
     comment << "#{syntax[:end]} \n\n"
   end
 
   # Insert license in file
   def insert_header(file)
     type = filetype(file)
-    if type != 'unknown'
+    if type != :unknown
       header = copyright_header(type) # generate commented copyright header
-      $existing_copyright << file if copyright_check(file) # add file to list if existing copyright found
+      @existing_copyright << file if copyright_check(file) # add file to list if existing copyright found
       f = File.new(file, 'r')
       file_content = ''
       find_file_head(file).times {file_content << f.readline } # insert file head
       file_content << header # insert copyright header
       file_content << f.readline until f.eof? # insert rest of file
-      if $options[:noop]
+      if @options[:noop]
         puts file_content
       else
-        dir = "#{$options[:outputdir]}/#{File.dirname(f.path)}"
+        dir = "#{@options[:outputdir]}/#{File.dirname(f.path)}"
         FileUtils.mkpath dir unless File.directory?(dir) # create folder if not existing
-        outputpath = $options[:outputdir] + file
+        outputpath = @options[:outputdir] + file
         File.new(outputpath, 'w').write(file_content)
-        $inserted_copyright << file # add file to list
+        @inserted_copyright << file # add file to list
       end
     else
-      $unknown_files << file # add file to list of files with unknown type
+      @unknown_files << file # add file to list of files with unknown type
     end
   end
 
   # get filetype from file
   def filetype(file) 
     ext = File.extname(file)
-    extension_types = {
-      :ruby => ['.rb'],
-      :html => ['.html', '.htm', '.xhtml'],
-      :erb => ['.erb'],
-      :javacript => ['.js'],
-      :css => ['.css'],
-      :yaml => ['.yml'],
-    }
-    extension_types.each {|type, extensions| return type if extensions.include? ext }
-    :unknown # return :unknown if type not found
+    @@extension_types.keys.detect{|key| @@extension_types[key].include?(ext)} || :unknown
   end
 
   # get hash with comment syntax by filetype
   def comment_syntax_type(type)
-    syntax_types = {
-      :ruby => ['# ', '# ', ''],
-      :html => ['<!-- ', '', ' -->'],
-      :erb => ['<% # ', '# ', ' %>'],
-      :javacript => ['// ', '// ', ''],
-      :css => ['/* ', ' * ', ' */ '],
-      :yaml => ['# ', '# ', ''],
-      :unknown => []
-    }
-    comment_syntax(*syntax_types[type]) # Use elements of array as arguments
+    comment_syntax(*@@syntax_types[type]) # Use elements of array as arguments
   end
 
   # get hash with comment syntax with specified syntax
   def comment_syntax(comm_start = '#', comm_line = '#', comm_end = '')
-    { :start => comm_start + " | # #{$COPYRIGHT_HEADER_START} #",
+    { :start => comm_start + " | # #{@@COPYRIGHT_HEADER_START} #",
       :line => comm_line + "|  ",
-      :end => comm_line + "| # #{$COPYRIGHT_HEADER_END} # \n" + comm_end, # comm_end on new line, otherwise it's commented out by comm_line
+      :end => comm_line + "| # #{@@COPYRIGHT_HEADER_END} # \n" + comm_end, # comm_end on new line, otherwise it's commented out by comm_line
       :comm_end => comm_end # Needed when cleaning
     }
   end
@@ -149,9 +154,9 @@ class CopyrightHeaderTool
     f = File.new(file, 'r')
     lines = fsize if (fsize < lines) # prevent from searching beyond EOF
     lines.times do
-      if (f.readline.include? $COPYRIGHT_HEADER_START)
+      if (f.readline.include? @@COPYRIGHT_HEADER_START)
         header[:start]=f.lineno  #Line Number of Header Start
-        next until (f.readline.include? $COPYRIGHT_HEADER_END)
+        next until (f.readline.include? @@COPYRIGHT_HEADER_END)
         header[:end]=f.lineno
         break # Stop loop when header found
       end
@@ -161,8 +166,8 @@ class CopyrightHeaderTool
   
   # get list of patterns, that have to be located before Inserting a comment
   def head_patterns_type(type)
-    patterns = $head_patterns[:general]
-    patterns.concat($head_patterns[:"#{type}"]) if $head_patterns[:"#{type}"]
+    patterns = @@head_patterns[:general]
+    patterns.concat(@@head_patterns[:"#{type}"]) if @@head_patterns[:"#{type}"]
     patterns
   end
 
@@ -202,36 +207,27 @@ class CopyrightHeaderTool
       file_content << f.readline until f.eof? # read lines after header
       # puts file_content
       File.new(file, 'w').write(file_content)
-      $cleaned_copyright << file
+      @cleaned_copyright << file
+    end
+  end
+  def write_lists
+    lists= {
+      @inserted_copyright => "Header inserted in following files:",
+      @cleaned_copyright => "Header cleaned in following files:",
+      @unknown_files => "Ignored files (unknown filetype):",
+      @existing_copyright => "WARNING: Existing Copyright found in following files:",
+      }
+    lists.each do |list, intro| 
+      if list.any?
+        puts intro
+        list.each { |file| puts "  " + file }
+        puts
+      end
     end
   end
 end
 
-def write_inserted
-  puts "Header inserted in following files:"
-  $inserted_copyright.each do |f|
-    puts "  " + f
-  end
-end
-def write_cleaned
-  puts "Header cleaned in following files:"
-  $cleaned_copyright.each do |f|
-    puts "  " + f
-  end
-end
-def write_existing_copyright
-  puts "\nWARNING: Existing Copyright found in following files:"
-  $existing_copyright.each do |f|
-    puts "  " + f
-  end
-end
-def write_ignored_files
-  puts "\nIgnored files (unknown filetype):"
-  $unknown_files.each do |f|
-    puts "  " + f
-  end
-end
-
+# Command line options parser
 class OptionParser
   def self.parse(args)
     options = {}
@@ -286,22 +282,18 @@ class OptionParser
   end # parse()
 end
 
-
 # Main
-
-$options = OptionParser.parse(ARGV)
 cht = CopyrightHeaderTool.new # New instance of the Tool
+cht.options = OptionParser.parse(ARGV)
+
 
 # Clean Copyright if option set
-cht.clean_header($options[:clean]) if $options[:clean]
+cht.clean_header(cht.options[:clean]) if cht.options[:clean]
 # Insert Copyright in specific file
-cht.insert_header($options[:file]) if $options[:file]
+cht.insert_header(cht.options[:file]) if cht.options[:file]
 # Insert Copyright in all files
-cht.insert_all(Dir.pwd) if $options[:all]
+cht.insert_all(Dir.pwd) if cht.options[:all]
 # Clean Copyright in all files
-cht.clean_all(Dir.pwd) if $options[:clean_all]
+cht.clean_all(Dir.pwd) if cht.options[:clean_all]
 
-write_inserted if $inserted_copyright.any?
-write_ignored_files if $unknown_files.any?
-write_existing_copyright if $existing_copyright.any?
-write_cleaned if $cleaned_copyright.any?
+cht.write_lists
