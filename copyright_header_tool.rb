@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Version: 0.5
+# Version: 0.6
 
 
 class CopyrightHeaderTool
@@ -30,7 +30,8 @@ class CopyrightHeaderTool
   @@COPYRIGHT_HEADER_END = "COPYRIGHT HEADER END" # Identifier at the end of inserted header
   @@head_patterns = { # when head patterns are found in the first lines, the copyright header is inserted after it 
     :general => ['#!'], # general file head identifiers, used for all filetypes
-    :html => ['<!DOCTYPE', '<html', ] # filetype specific file head identifiers
+    :html => ['<!DOCTYPE', '<html', ], # filetype specific file head identifiers
+    :xml => ['<?xml'],
   }
   @@extension_types = { # Hash of filetypes with corresponding extensions
     :ruby => ['.rb'],
@@ -39,6 +40,8 @@ class CopyrightHeaderTool
     :javacript => ['.js'],
     :css => ['.css'],
     :yaml => ['.yml'],
+    :xml => ['.xml'],
+    :java => ['.java', '.c', '.cpp']
   }
   @@syntax_types = { # Hash of filetypes and their comment syntax
     :ruby => ['# ', '# ', ''],
@@ -47,6 +50,8 @@ class CopyrightHeaderTool
     :javacript => ['// ', '// ', ''],
     :css => ['/* ', ' * ', ' */ '],
     :yaml => ['# ', '# ', ''],
+    :xml => ['<!--', ' ~ ', '-->'],
+    :java => ['/* ', ' * ', ' */ '],
     :unknown => []
   }
   def initialize
