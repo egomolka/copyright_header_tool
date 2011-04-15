@@ -1,0 +1,25 @@
+# Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
+
+one:
+  model: WD Raptor WD1500ADFD
+  serial_number: WMAP42010873
+  purchase_date: 2011-02-28
+  warranty_till: 2015-02-28
+  price: 98.50
+  notes: Disk gekauft für Testing
+  capacity: 150
+  connector: SATA
+  version: 1
+  in_repair: false
+
+two:
+  model: WD Raptor WD3000ADFD
+  serial_number: WMAP41210873
+  purchase_date: 2011-04-26
+  warranty_till: 2015-06-24
+  price: 198.50
+  notes: Disk gemietet für Testing
+  capacity: 300
+  connector: SATA
+  version: 1
+  in_repair: false
