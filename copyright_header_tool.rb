@@ -274,7 +274,14 @@ class OptionParser
       opts.on( '-f', '--file FILE', 'Insert Header in FILE' ) do|file|
         options[:file] = file
       end
-      
+      opts.on( '-V', '--version', 'Display version information' ) do
+        puts "CopyrightHeaderTool 0.6"
+        puts "Copyright (C) 2011 Puzzle ITC GmbH - www.puzzle.ch"
+        puts "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>"
+        puts "This is free software: you are free to change and redistribute it."
+        puts "There is NO WARRANTY, to the extent permitted by law."
+        exit
+      end
       # This displays the help screen, all programs are
       # assumed to have this option.
       opts.on( '-h', '--help', 'Display this screen' ) do
