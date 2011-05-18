@@ -96,7 +96,9 @@ class CopyrightHeaderTool
   # Insert license in file
   def insert_header(file)
     type = filetype(file)
+    clean_header(file)
     if type != :unknown
+      # clean_header(file) # Remove existing header
       header = copyright_header(type) # generate commented copyright header
       @existing_copyright << file if copyright_check(file) # add file to list if existing copyright found
       f = File.new(file, 'r')
@@ -104,17 +106,43 @@ class CopyrightHeaderTool
       find_file_head(file).times {file_content << f.readline } # insert file head
       file_content << header # insert copyright header
       file_content << f.readline until f.eof? # insert rest of file
+      f.close # close file before opening eventually in write mode
       if @options[:noop]
         puts file_content
       else
         dir = "#{@options[:outputdir]}/#{File.dirname(f.path)}"
         FileUtils.mkpath dir unless File.directory?(dir) # create folder if not existing
         outputpath = @options[:outputdir] + file
-        File.new(outputpath, 'w').write(file_content)
+        fnew =File.new(outputpath, 'w')
+        fnew.write(file_content)
+        fnew.close
         @inserted_copyright << file # add file to list
       end
     else
       @unknown_files << file # add file to list of files with unknown type
+    end
+  end
+
+  # Clean copyright header in file
+  def clean_header(file)
+    header = find_copyright_header(file)
+    syntax = comment_syntax_type(filetype(file))
+    if header.any? # only when header found
+      f = File.new(file, 'r')
+      file_content = ""
+      (header[:start]-1).times {file_content << f.readline } # read lines before header
+      f.readline while (f.lineno < header[:end]) # jump over every line till header_end
+      line = f.readline
+      file_content << line unless line.sub(syntax[:comm_end], '').strip.empty? # add first line after header if not empty (after removing comment end syntax)
+      line = f.readline
+      file_content << line unless line.strip.empty? # add second line after header end if not empty
+      file_content << f.readline until f.eof? # read lines after header
+      f.close # close file before opening in write mode
+      # puts file_content
+      fnew = File.new(file, 'w')
+      fnew.write(file_content)
+      fnew.close
+      @cleaned_copyright << file
     end
   end
 
@@ -196,33 +224,18 @@ class CopyrightHeaderTool
     head_end
   end
 
-  # Clean copyright header in file
-  def clean_header(file)
-    header = find_copyright_header(file)
-    syntax = comment_syntax_type(filetype(file))
-    if header.any? # only when header found
-      f = File.new(file, 'r')
-      file_content = ""
-      (header[:start]-1).times {file_content << f.readline } # read lines before header
-      f.readline while (f.lineno < header[:end]) # jump over every line till header_end
-      line = f.readline
-      file_content << line unless line.sub(syntax[:comm_end], '').strip.empty? # add first line after header if not empty (after removing comment end syntax)
-      line = f.readline
-      file_content << line unless line.strip.empty? # add second line after header end if not empty
-      file_content << f.readline until f.eof? # read lines after header
-      # puts file_content
-      File.new(file, 'w').write(file_content)
-      @cleaned_copyright << file
-    end
-  end
   def write_lists
+    @replaced_copyright = @inserted_copyright & @cleaned_copyright
+    @cleaned_copyright -=  @replaced_copyright
+    @inserted_copyright -= @replaced_copyright
     lists= {
-      @inserted_copyright => "Header inserted in following files:",
-      @cleaned_copyright => "Header cleaned in following files:",
-      @unknown_files => "Ignored files (unknown filetype):",
-      @existing_copyright => "WARNING: Existing Copyright found in following files:",
+      "Replaced header in following files:" => @replaced_copyright,
+      "Header inserted in following files:" => @inserted_copyright,
+      "Header cleaned in following files:" => @cleaned_copyright,
+      "Ignored files (unknown filetype):" => @unknown_files,
+      "WARNING: Existing Copyright found in following files:" => @existing_copyright,
       }
-    lists.each do |list, intro| 
+    lists.each do |intro, list| 
       if list.any?
         puts intro
         list.each { |file| puts "  " + file }
