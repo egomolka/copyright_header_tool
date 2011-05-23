@@ -40,12 +40,12 @@ h1. Installation and Usage Notes
 # Example @./copyright_header_tool.rb -a -o test@ 
 # Use it on your project: 
 # Add a Licence file in your project root or specify the Licence file with @-l FILE@
-# @/path/to/tool/copyright_header_tool.rb -a -o . @
+# @/path/to/tool/copyright_header_tool.rb -a -o .@
 # Remove inserted headers: @./copyright_header_tool.rb -C@
 # To adapt the tool to your needs, simply edit the script. most settings are at the top of the file.
 # Share your improvemenents!
-*
-<code>
+
+<pre>
 ./copyright_header_tool.rb -h
 Usage: CopyrightHeaderTool.rb options [file]
     -n, --noop                       Output the parsed files to STDOUT, do not change the files
@@ -58,7 +58,7 @@ Usage: CopyrightHeaderTool.rb options [file]
     -f, --file FILE                  Insert Header in FILE
     -V, --version                    Display version information
     -h, --help                       Display this screen
-</code>
+</pre>
 
 h1. Contact Information
 
