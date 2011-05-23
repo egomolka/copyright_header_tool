@@ -1,0 +1,65 @@
+h1. CopyrightHeaderTool
+
+CopyrightHeaderTool is a Ruby script to insert a Copyright Header into many files with different syntax
+
+Copyright (C) 2011 Puzzle ITC GmbH - www.puzzle.ch
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License 
+along with this program.  If not, see http://www.gnu.org/licenses/
+
+h1. Features
+
+* Insert a Copyright Header into many files with different syntax
+* Header is commented according to the filetype (by extension)
+* Warning if existing Copyright headers are detected
+* File heads, like html doctype are detected and Header is inserted after it
+* Remove all inserted Headers
+
+
+h1. Requirements
+
+* Ruby
+* FileUtils (gem install fileutils)
+
+
+h1. Installation and Usage Notes
+
+# download: @git clone git://github.com/puzzle/copyright_header_tool.git@
+# @cd copyright_header_tool@
+# Exercise with testfiles: @./copyright_header_tool.rb -h@
+# Example @./copyright_header_tool.rb -a -o test@ 
+# Use it on your project: 
+# Add a Licence file in your project root or specify the Licence file with @-l FILE@
+# @/path/to/tool/copyright_header_tool.rb -a -o . @
+# Remove inserted headers: @./copyright_header_tool.rb -C@
+# To adapt the tool to your needs, simply edit the script. most settings are at the top of the file.
+# Share your improvemenents!
+*
+<code>
+./copyright_header_tool.rb -h
+Usage: CopyrightHeaderTool.rb options [file]
+    -n, --noop                       Output the parsed files to STDOUT, do not change the files
+    -o, --outputdir DIR              Use DIR as output directory, default is "copyrighted/"
+          (Use  -o "." for in-place inserting )
+    -l, --license FILE               Use FILE as Header, default is "License"
+    -c, --clean-header FILE          Clean Header in FILE
+    -a, --all                        Insert Header in all Files in current folder and subdirectories
+    -C, --clean-all                  Clean Header in all Files in current folder and subdirectories
+    -f, --file FILE                  Insert Header in FILE
+    -V, --version                    Display version information
+    -h, --help                       Display this screen
+</code>
+
+h1. Contact Information
+
+CopyrightHeaderTool was made by the guys at Puzzle ITC. Please go to "http://www.puzzle.ch/":http://www.puzzle.ch/ in order to get in touch with us.
