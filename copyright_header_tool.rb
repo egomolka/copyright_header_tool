@@ -28,10 +28,12 @@ class CopyrightHeaderTool
   
   @@COPYRIGHT_HEADER_START = "COPYRIGHT HEADER START" # Identifier at the start of inserted header
   @@COPYRIGHT_HEADER_END = "COPYRIGHT HEADER END" # Identifier at the end of inserted header
-  @@head_patterns = { # when head patterns are found in the first lines, the copyright header is inserted after it 
+  @@head_patterns = {
+    # when head patterns are found in the first lines, the copyright header is inserted after it
+    # Attention: These are regular expressions, Escape special chars like \?. Test: http://rubular.com
     :general => ['#!'], # general file head identifiers, used for all filetypes
     :html => ['<!DOCTYPE', '<html', ], # filetype specific file head identifiers
-    :xml => ['<?xml'],
+    :xml => ['<\?xml'],
   }
   @@extension_types = { # Hash of filetypes with corresponding extensions
     :ruby => ['.rb'],
