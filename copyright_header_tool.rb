@@ -38,6 +38,7 @@ class CopyrightHeaderTool
   @@extension_types = { # Hash of filetypes with corresponding extensions
     :ruby => ['.rb'],
     :html => ['.html', '.htm', '.xhtml'],
+    :haml => ['.haml'],
     :erb => ['.erb'],
     :javacript => ['.js'],
     :css => ['.css'],
@@ -48,6 +49,7 @@ class CopyrightHeaderTool
   @@syntax_types = { # Hash of filetypes and their comment syntax
     :ruby => ['# ', '# ', ''],
     :html => ['<!-- ', '', ' -->'],
+    :haml => ['-# ', '  ', ''],
     :erb => ['<% # ', '# ', ' %>'],
     :javacript => ['// ', '// ', ''],
     :css => ['/* ', ' * ', ' */ '],
