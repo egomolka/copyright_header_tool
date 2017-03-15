@@ -43,7 +43,7 @@ class CopyrightHeaderTool
     :javacript => ['.js'],
     :css => ['.css'],
     :yaml => ['.yml'],
-    :xml => ['.xml'],
+    :xml => ['.xml', '.dryml'],
     :java => ['.java', '.c', '.cpp']
   }
   @@syntax_types = { # Hash of filetypes and their comment syntax
@@ -163,7 +163,7 @@ class CopyrightHeaderTool
 
   # get hash with comment syntax with specified syntax
   def comment_syntax(comm_start = '#', comm_line = '#', comm_end = '')
-    { :start => comm_start + " | # #{@@COPYRIGHT_HEADER_START} #",
+    { :start => comm_start + "| # #{@@COPYRIGHT_HEADER_START} #",
       :line => comm_line + "|  ",
       :end => comm_line + "| # #{@@COPYRIGHT_HEADER_END} # \n" + comm_end, # comm_end on new line, otherwise it's commented out by comm_line
       :comm_end => comm_end # Needed when cleaning
